@@ -1,0 +1,63 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+import matplotlib.pyplot as plt
+import yfinance as yf
+
+# Step 1: Fetch historical stock data from Yahoo Finance
+ticker = 'META'  # Example: Meta
+stock_data = yf.download(ticker, start='2020-01-01', end='2024-01-01')
+
+# Step 2: Feature Engineering
+# Calculate daily returns
+stock_data['Return'] = stock_data['Adj Close'].pct_change()
+
+# Calculate moving averages (e.g., 20-day, 50-day, 200-day)
+stock_data['MA20'] = stock_data['Adj Close'].rolling(window=20).mean()
+stock_data['MA50'] = stock_data['Adj Close'].rolling(window=50).mean()
+stock_data['MA200'] = stock_data['Adj Close'].rolling(window=200).mean()
+
+# Drop missing values
+stock_data = stock_data.dropna()
+
+# Create the target variable: 1 if price increased, 0 if decreased
+stock_data['Target'] = (stock_data['Return'] > 0).astype(int)
+
+# Step 3: Define features and target
+features = ['Return', 'MA20', 'MA50', 'MA200', 'Volume']
+X = stock_data[features]  # Features
+y = stock_data['Target']  # Target
+
+# Step 4: Train-Test Split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Step 5: Model Training
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+
+# Step 6: Model Evaluation
+y_pred = model.predict(X_test)
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Accuracy: {accuracy * 100:.2f}%")
+
+# Step 7: Visualizing Feature Importance
+feature_importances = model.feature_importances_
+plt.barh(features, feature_importances)
+plt.xlabel('Feature Importance')
+plt.title('Feature Importance for Stock Movement Prediction')
+plt.show()
+
+# Step 8: Predicting Stock Movement for New Data
+new_data = pd.DataFrame({
+    'Return': [0.01],    # Example return value
+    'MA20': [250],       # Example 20-day moving average
+    'MA50': [245],       # Example 50-day moving average
+    'MA200': [230],      # Example 200-day moving average
+    'Volume': [1000000]  # Example volume
+})
+
+# Predict stock movement (1 = Increase, 0 = Decrease)
+prediction = model.predict(new_data)
+print("Predicted Stock Movement (1 = Increase, 0 = Decrease):", prediction[0])
